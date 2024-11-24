@@ -55,6 +55,32 @@ class TestShellEmulator(unittest.TestCase):
         result = ls("non_existent_directory/", self.tar_name)
         self.assertEqual(result, "Directory path is empty.")
 
+    def test_cd(self):
+        """Тестируем команду cd."""
+        # Переход в поддиректорию
+        result = cd("", "dir1", self.tar_name)
+        self.assertEqual(result, "dir1")
+
+        # Переход в несуществующую директорию
+        result = cd("", "non_existent_dir", self.tar_name)
+        self.assertEqual(result, "")
+
+        # Переход назад
+        result = cd("dir1", "..", self.tar_name)
+        self.assertEqual(result, "")
+
+        # Переход на два уровня вверх
+        result = cd("dir1/subdir", "..", self.tar_name)
+        self.assertEqual(result, "dir1")
+
+        # Переход в корень
+        result = cd("dir1", "/", self.tar_name)
+        self.assertEqual(result, "")
+
+        # Оставление текущей директории при ошибке
+        result = cd("dir1", "non_existent_subdir", self.tar_name)
+        self.assertEqual(result, "dir1")
+
 
 if __name__ == "__main__":
     unittest.main()
