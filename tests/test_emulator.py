@@ -119,7 +119,25 @@ class TestShellEmulator(unittest.TestCase):
         result = date()
         self.assertRegex(result, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")  # Формат "YYYY-MM-DD HH:MM:SS"
 
+    @patch("os._exit")
+    def test_exit(self, mock_exit):
+        """Тестируем команду exit."""
+        with patch("builtins.print") as mock_print:
+            # Сценарий без GUI
+            exit_command(is_gui_running=False)
 
+            # Проверяем, что сообщение было напечатано
+            mock_print.assert_called_with("Exiting application...")
+
+            # Проверяем, что вызван os._exit(0)
+            mock_exit.assert_called_once_with(0)
+
+            # Сценарий с GUI
+            mock_root = MagicMock()
+            exit_command(is_gui_running=True, root=mock_root)
+
+            # Проверяем, что destroy был вызван
+            mock_root.destroy.assert_called_once()
 
 if __name__ == "__main__":
     unittest.main()
