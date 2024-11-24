@@ -100,6 +100,25 @@ class TestShellEmulator(unittest.TestCase):
         result = uniq("non_existent_file.txt", self.tar_name)
         self.assertEqual(result, "Error: File 'non_existent_file.txt' not found inside the archive.")
 
+    def test_date(self):
+        """Тестируем команду date."""
+
+        # Тест 1: Проверка вывода текущей даты
+        result = date()
+        current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.assertTrue(result.startswith(current_date))  # Проверка на начало строки с датой
+
+        # Тест 2: Проверка, что дата обновляется при каждом вызове
+        result1 = date()
+        sleep(1)  # Пауза 1 секунда между вызовами
+        result2 = date()
+        self.assertNotEqual(result1, result2)
+        # Ожидаем, что даты будут разные
+
+        # Тест 3: Проверка формата даты
+        result = date()
+        self.assertRegex(result, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")  # Формат "YYYY-MM-DD HH:MM:SS"
+
     @patch("os._exit")
     def test_exit(self, mock_exit):
         """Тестируем команду exit."""
