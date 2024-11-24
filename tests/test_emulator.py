@@ -81,6 +81,64 @@ class TestShellEmulator(unittest.TestCase):
         result = cd("dir1", "non_existent_subdir", self.tar_name)
         self.assertEqual(result, "dir1")
 
+    def test_uniq(self):
+        """Тестируем команду uniq."""
+
+        # Тест 1: Уникальные строки из файла
+        result = uniq("test.txt", self.tar_name)
+        self.assertIn("clouds", result)
+        self.assertIn("sky", result)
+        self.assertIn("star", result)
+        self.assertIn("planet", result)
+        self.assertEqual(result, "clouds\nplanet\nsky\nstar")  # Уникальные строки
+
+        # Тест 2: Пустой файл
+        result = uniq("empty_file.txt", self.tar_name)
+        self.assertEqual(result, "Error: File 'empty_file.txt' not found inside the archive.")
+
+        # Тест 3: Ошибка при неверном пути к файлу
+        result = uniq("non_existent_file.txt", self.tar_name)
+        self.assertEqual(result, "Error: File 'non_existent_file.txt' not found inside the archive.")
+
+    def test_date(self):
+        """Тестируем команду date."""
+
+        # Тест 1: Проверка вывода текущей даты
+        result = date()
+        current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.assertTrue(result.startswith(current_date))  # Проверка на начало строки с датой
+
+        # Тест 2: Проверка, что дата обновляется при каждом вызове
+        result1 = date()
+        sleep(1)  # Пауза 1 секунда между вызовами
+        result2 = date()
+        self.assertNotEqual(result1, result2)
+        # Ожидаем, что даты будут разные
+
+        # Тест 3: Проверка формата даты
+        result = date()
+        self.assertRegex(result, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")  # Формат "YYYY-MM-DD HH:MM:SS"
+
+    @patch("os._exit")
+    def test_exit(self, mock_exit):
+        """Тестируем команду exit."""
+        with patch("builtins.print") as mock_print:
+            # Сценарий без GUI
+            exit_command(is_gui_running=False)
+
+            # Проверяем, что сообщение было напечатано
+            mock_print.assert_called_with("Exiting application...")
+
+            # Проверяем, что вызван os._exit(0)
+            mock_exit.assert_called_once_with(0)
+
+            # Сценарий с GUI
+            mock_root = MagicMock()
+            exit_command(is_gui_running=True, root=mock_root)
+
+            # Проверяем, что destroy был вызван
+            mock_root.destroy.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
