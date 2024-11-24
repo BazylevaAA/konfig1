@@ -81,6 +81,25 @@ class TestShellEmulator(unittest.TestCase):
         result = cd("dir1", "non_existent_subdir", self.tar_name)
         self.assertEqual(result, "dir1")
 
+    def test_uniq(self):
+        """Тестируем команду uniq."""
+
+        # Тест 1: Уникальные строки из файла
+        result = uniq("test.txt", self.tar_name)
+        self.assertIn("clouds", result)
+        self.assertIn("sky", result)
+        self.assertIn("star", result)
+        self.assertIn("planet", result)
+        self.assertEqual(result, "clouds\nplanet\nsky\nstar")  # Уникальные строки
+
+        # Тест 2: Пустой файл
+        result = uniq("empty_file.txt", self.tar_name)
+        self.assertEqual(result, "Error: File 'empty_file.txt' not found inside the archive.")
+
+        # Тест 3: Ошибка при неверном пути к файлу
+        result = uniq("non_existent_file.txt", self.tar_name)
+        self.assertEqual(result, "Error: File 'non_existent_file.txt' not found inside the archive.")
+
 
 if __name__ == "__main__":
     unittest.main()
