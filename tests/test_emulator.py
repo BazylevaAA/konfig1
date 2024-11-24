@@ -37,6 +37,24 @@ class TestShellEmulator(unittest.TestCase):
         if os.path.exists("test.txt"):
             os.remove("test.txt")
 
+    def test_ls(self):
+        """Тестируем команду ls."""
+        # Проверяем содержимое корневой директории
+        result = ls("", self.tar_name)
+        self.assertEqual(result, "dir1\ntest.txt")  # В корне должны быть только dir1 и test.txt
+
+        # Проверяем содержимое подкаталога dir1
+        result = ls("dir1", self.tar_name)
+        self.assertEqual(result, "file2.txt")  # В dir1 должен быть только file2.txt
+
+        # Проверяем пустую директорию
+        result = ls("empty_dir", self.tar_name)
+        self.assertEqual(result, "Directory path is empty.")
+
+        # Проверяем ошибку при неверном пути
+        result = ls("non_existent_directory/", self.tar_name)
+        self.assertEqual(result, "Directory path is empty.")
+
 
 if __name__ == "__main__":
     unittest.main()
