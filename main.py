@@ -149,3 +149,35 @@ class Emulator:
             return self.directories[path]  # Возвращаем список файлов в директории
         return []
 
+    def run_startup_script(self):
+        """Запуск стартового скрипта."""
+        try:
+            with open(self.startup_script, 'r') as script_file:
+                commands = script_file.readlines()
+            for command in commands:
+                self.print_output(self.execute_command(command.strip()))
+        except FileNotFoundError:
+            self.print_output(f"Startup script {self.startup_script} not found.")
+
+    def on_command_enter(self, event):
+        """Обработчик для ввода команды через клавишу Enter в GUI."""
+        command = self.command_entry.get()
+        if command:
+            result = self.execute_command(command)
+            self.print_output(result)
+        self.command_entry.delete(0, tk.END)
+
+    def print_output(self, output: str) -> None:
+        """Вывод текста в окно консоли."""
+        self.text_output.insert(tk.END, output + "\n")
+        self.text_output.yview(tk.END)  # Автопрокрутка вниз
+
+    def start(self):
+        """Запуск эмулятора с GUI."""
+        tk.mainloop()
+
+
+if __name__ == "__main__":
+    # Укажите путь к конфигурационному файлу
+    emulator = Emulator(config_path="config.toml", root=tk.Tk())
+    emulator.start()
