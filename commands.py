@@ -101,17 +101,12 @@ def date():
 
 def exit_command(is_gui_running=True, root=None):
     """
-    Завершает работу приложения.
 
     :param is_gui_running: Флаг, указывает, используется ли GUI.
     :param root: Объект корневого окна tkinter, если приложение работает с GUI.
     :return: Сообщение о завершении работы.
     """
     if is_gui_running and root:
-        root.destroy()  # Закрываем главное окно tkinter
+        root.destroy()
     print("Exiting application...")
-    os._exit(0)  # Полное завершение программы
-
-
-
-
+    os._exit(0)

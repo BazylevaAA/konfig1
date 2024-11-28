@@ -7,8 +7,6 @@ from io import StringIO
 import sys
 from time import sleep
 from unittest.mock import patch, MagicMock
-
-# Импортируем функции из ваших файлов
 from commands import ls, cd, uniq, date, exit_command
 
 
