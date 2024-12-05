@@ -5,34 +5,24 @@ import chardet
 
 
 def ls(current_dir, tar_path):
-    if not os.path.exists(tar_path):
-        return f"Error: Archive '{tar_path}' not found."
-
     with tarfile.open(tar_path, "r") as tar:
         contents = []
-
-        # Формируем путь для фильтрации
         if current_dir:
             current_dir = current_dir.rstrip("/") + "/"
-        else:
-            current_dir = ""
 
         for member in tar.getmembers():
-            # Проверяем, лежит ли элемент в указанной директории
             if member.name.startswith(current_dir):
-                # Убираем префикс текущей директории из имени
                 stripped_name = member.name[len(current_dir):]
-
-                # Учитываем только элементы верхнего уровня
                 if "/" not in stripped_name.rstrip("/"):
-                    contents.append(stripped_name.rstrip("/"))
+                    is_dir = member.isdir()
+                    contents.append((stripped_name.rstrip("/"), is_dir))
 
-        # Если содержимое пусто, возвращаем сообщение
         if not contents:
             return "Directory path is empty."
 
-        # Сортируем содержимое и возвращаем
-        return "\n".join(sorted(contents))
+        contents = sorted(contents, key=lambda x: x[0].lower())
+        return "\n".join(colorize(name, is_dir) for name, is_dir in contents)
+
 
 def cd(current_dir, target_dir, tar_path):
     try:
@@ -67,33 +57,21 @@ def cd(current_dir, target_dir, tar_path):
 
 
 def uniq(file_path, tar_path, current_dir=""):
-    try:
-        with tarfile.open(tar_path, "r") as tar:
-            if current_dir:
-                file_path = os.path.join(current_dir, file_path).lstrip(os.sep)
+    with tarfile.open(tar_path, "r") as tar:
+        if current_dir:
+            file_path = os.path.join(current_dir, file_path).lstrip(os.sep)
 
-            try:
-                file = tar.extractfile(file_path)
-                file_content = file.read()  # Считываем весь файл как байты
+        try:
+            file = tar.extractfile(file_path)
+            file_content = file.read()
+            encoding = chardet.detect(file_content).get('encoding', 'utf-8')
+            lines = file_content.decode(encoding).splitlines()
+            unique_lines = sorted(set(line.strip() for line in lines))
+            return "\n".join(unique_lines)
 
-                # Определяем кодировку файла
-                detected = chardet.detect(file_content)
-                encoding = detected['encoding']
+        except KeyError:
+            return f"Error: File '{file_path}' not found inside the archive."
 
-                if encoding is None:
-                    return f"Error: Could not determine encoding for '{file_path}'."
-
-                # Декодируем файл в строки
-                lines = file_content.decode(encoding).splitlines()
-
-                # Уникализация строк
-                unique_lines = sorted(set(line.strip() for line in lines))
-                return "\n".join(unique_lines)
-
-            except KeyError:
-                return f"Error: File '{file_path}' not found inside the archive."
-    except FileNotFoundError:
-        return f"Error: Archive '{tar_path}' not found.'"
 
 
 def date():
@@ -101,7 +79,6 @@ def date():
 
 def exit_command(is_gui_running=True, root=None):
     """
-
     :param is_gui_running: Флаг, указывает, используется ли GUI.
     :param root: Объект корневого окна tkinter, если приложение работает с GUI.
     :return: Сообщение о завершении работы.
@@ -110,3 +87,11 @@ def exit_command(is_gui_running=True, root=None):
         root.destroy()
     print("Exiting application...")
     os._exit(0)
+
+
+def normalize_path(path):
+    return path.lstrip("./")
+
+
+def colorize(name, is_dir):
+    return f"[DIR] {name}" if is_dir else f"[FILE] {name}"
