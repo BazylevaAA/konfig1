@@ -91,44 +91,53 @@ def cd(current_dir, target_dir, tar_path):
         return current_dir
 
 
+import os
+import tarfile
+import chardet
+
 def uniq(file_path, tar_path, current_dir=""):
     try:
+        # Если указан current_dir, добавляем его к file_path
+        if current_dir:
+            # Проверяем, не начинается ли file_path с ./ или /
+            if not file_path.startswith(("./", "/")):
+                file_path = os.path.join(current_dir, file_path)
+
+        # Нормализуем путь
+        normalized_path = os.path.normpath(file_path).replace("\\", "/")
+
+        # Убираем начальный "./" для пути в архиве
+        archive_path = normalized_path.lstrip("./")
+
         with tarfile.open(tar_path, "r") as tar:
-            # Приводим путь к формату с прямыми слэшами для архивов
-            file_path = file_path.replace(os.sep, '/')
-
-            # Если текущая директория не пуста, добавляем её к пути
-            if current_dir:
-                # Убираем лишние слеши, если current_dir уже присутствует в пути
-                if not file_path.startswith(current_dir):
-                    file_path = os.path.join(current_dir, file_path)
-
-            # Нормализуем путь для корректного использования внутри архива
-            file_path = file_path.lstrip('./')  # Убираем лишний './', если он есть
-            file_path = './' + file_path  # Добавляем './' для архива
-
-            # Проверяем, существует ли файл в архиве
+            # Проверяем содержимое архива
             for member in tar.getmembers():
-                if member.name == file_path:
-                    file = tar.extractfile(file_path)
+                member_name = member.name.lstrip("./")  # Убираем начальный './'
+                if member_name == archive_path:
+                    # Извлекаем файл
+                    file = tar.extractfile(member)
+                    if not file:
+                        return f"Error: Unable to read file '{file_path}'."
+
+                    # Читаем содержимое файла
                     file_content = file.read()
 
-                    # Определяем кодировку файла
+                    # Определяем кодировку
                     detected = chardet.detect(file_content)
-                    encoding = detected['encoding']
+                    encoding = detected.get('encoding', 'utf-8')
 
-                    if encoding is None:
-                        return f"Error: Could not determine encoding for '{file_path}'."
-
-                    # Декодируем и обрабатываем строки
+                    # Обрабатываем строки
                     lines = file_content.decode(encoding).splitlines()
                     unique_lines = sorted(set(line.strip() for line in lines if line.strip()))
                     return "\n".join(unique_lines)
 
-            return f"Error: File '{file_path}' not found inside the archive."
+            # Если файл не найден
+            return f"Error: File '{archive_path}' not found inside the archive."
 
     except Exception as e:
         return f"An error occurred: {str(e)}"
+
+
 def date():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
