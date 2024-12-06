@@ -39,8 +39,7 @@ def ls(current_dir, tar_path, text_output):
         if not contents:
             return "Directory is empty."
 
-        # Сортируем содержимое и выводим в text_output с тегами
-        text_output.delete(1.0, tk.END)  # Очищаем вывод
+        # Не очищаем вывод, а добавляем вывод в конец
         for item in sorted(contents):
             name, type_of_item = item
             if type_of_item == 'directory':
@@ -52,7 +51,6 @@ def ls(current_dir, tar_path, text_output):
         text_output.yview(tk.END)
 
     return ""  # Возвращаем пустое сообщение, так как вывод будет в text_output
-
 
 def cd(current_dir, target_dir, tar_path):
     try:
@@ -89,11 +87,6 @@ def cd(current_dir, target_dir, tar_path):
     except Exception as e:
         print(f"Error in cd: {e}")
         return current_dir
-
-
-import os
-import tarfile
-import chardet
 
 def uniq(file_path, tar_path, current_dir=""):
     try:
