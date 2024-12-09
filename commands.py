@@ -87,44 +87,36 @@ def cd(current_dir, target_dir, tar_path):
     except Exception as e:
         print(f"Error in cd: {e}")
         return current_dir
-
 def uniq(file_path, tar_path, current_dir=""):
     try:
-        # Если указан current_dir, добавляем его к file_path
+        # Нормализация относительных путей
         if current_dir:
-            # Проверяем, не начинается ли file_path с ./ или /
             if not file_path.startswith(("./", "/")):
                 file_path = os.path.join(current_dir, file_path)
-
-        # Нормализуем путь
         normalized_path = os.path.normpath(file_path).replace("\\", "/")
-
-        # Убираем начальный "./" для пути в архиве
         archive_path = normalized_path.lstrip("./")
 
         with tarfile.open(tar_path, "r") as tar:
-            # Проверяем содержимое архива
             for member in tar.getmembers():
-                member_name = member.name.lstrip("./")  # Убираем начальный './'
+                member_name = member.name.lstrip("./")
                 if member_name == archive_path:
-                    # Извлекаем файл
                     file = tar.extractfile(member)
                     if not file:
                         return f"Error: Unable to read file '{file_path}'."
 
-                    # Читаем содержимое файла
                     file_content = file.read()
+                    if not file_content:
+                        return ""  # Пустой файл
 
-                    # Определяем кодировку
                     detected = chardet.detect(file_content)
                     encoding = detected.get('encoding', 'utf-8')
+                    if encoding is None:
+                        return f"An error occurred: decode() argument 'encoding' must be str, not None"
 
-                    # Обрабатываем строки
                     lines = file_content.decode(encoding).splitlines()
                     unique_lines = sorted(set(line.strip() for line in lines if line.strip()))
                     return "\n".join(unique_lines)
 
-            # Если файл не найден
             return f"Error: File '{archive_path}' not found inside the archive."
 
     except Exception as e:

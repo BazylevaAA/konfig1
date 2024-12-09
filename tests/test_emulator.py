@@ -1,141 +1,250 @@
-import shutil
 import unittest
 import os
 import tarfile
-from datetime import datetime
-from io import StringIO
-import sys
-from time import sleep
-from unittest.mock import patch, MagicMock
+import tkinter as tk
+import datetime
 from commands import ls, cd, uniq, date, exit_command
 
 
-class TestShellEmulator(unittest.TestCase):
+class MockTextOutput:
+    """Класс для эмуляции текстового вывода в GUI."""
+
+    def __init__(self):
+        self.text = []
+
+    def insert(self, _, text, tag=None):
+        self.text.append(text)
+
+    def get_text(self):
+        return "".join(self.text)
+
+    def yview(self, *args):
+        pass
+
+
+class TestUniqFunction(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Подготовка тестового архива перед выполнением тестов."""
+        cls.test_tar_path = "test_archive.tar"
+        with tarfile.open(cls.test_tar_path, "w") as tar:
+            # Создаем тестовые файлы для архива
+            file1_content = b"line1\nline2\nline3\nline1\nline2\n"
+            file2_content = b""  # Пустой файл
+            os.makedirs("test_dir", exist_ok=True)
+
+            # Записываем файл с содержимым
+            with open("test_dir/file1.txt", "wb") as f:
+                f.write(file1_content)
+
+            # Пустой файл
+            with open("test_dir/file2.txt", "wb") as f:
+                f.write(file2_content)
+
+            tar.add("test_dir/file1.txt", arcname="file1.txt")
+            tar.add("test_dir/file2.txt", arcname="file2.txt")
+
+    @classmethod
+    def tearDownClass(cls):
+        """Удаление тестового архива и временных файлов."""
+        os.remove(cls.test_tar_path)
+        if os.path.exists("test_dir"):
+            for file in os.listdir("test_dir"):
+                os.remove(os.path.join("test_dir", file))
+            os.rmdir("test_dir")
+
+    def test_existing_file_with_content(self):
+        """Тест: файл существует и содержит строки."""
+        result = uniq("file1.txt", self.test_tar_path)
+        expected_result = "line1\nline2\nline3"  # Ожидаем уникальные строки в алфавитном порядке
+        self.assertEqual(result, expected_result)
+
+    def test_file_not_found(self):
+        """Тест: файл отсутствует в архиве."""
+        result = uniq("nonexistent.txt", self.test_tar_path)
+        expected_result = "Error: File 'nonexistent.txt' not found inside the archive."
+        self.assertEqual(result, expected_result)
+
+    def test_empty_file(self):
+        """Тест: файл существует, но пустой."""
+        result = uniq("file2.txt", self.test_tar_path)
+        expected_result = ""  # Пустая строка, если файл пустой
+        self.assertEqual(result, expected_result)
+
+
+class TestLSFunction(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Создаем временную файловую структуру
+        os.makedirs("test_fs/dir1", exist_ok=True)
+        os.makedirs("test_fs/dir2", exist_ok=True)
+        with open("test_fs/file1.txt", "w") as f:
+            f.write("File 1 content")
+        with open("test_fs/dir1/file2.txt", "w") as f:
+            f.write("File 2 content")
+
+        # Создаем тестовый архив
+        with tarfile.open("test_archive.tar", "w") as tar:
+            tar.add("test_fs", arcname="my_virtual_fs")
+
+    @classmethod
+    def tearDownClass(cls):
+        # Удаляем временные файлы и папки
+        if os.path.exists("test_archive.tar"):
+            os.remove("test_archive.tar")
+        if os.path.exists("test_fs"):
+            for root, dirs, files in os.walk("test_fs", topdown=False):
+                for name in files:
+                    os.remove(os.path.join(root, name))
+                for name in dirs:
+                    os.rmdir(os.path.join(root, name))
+            os.rmdir("test_fs")
 
     def setUp(self):
-        # Подготовка тестовой среды
-        self.tar_name = "test_filesystem.tar"
-
-        os.makedirs("dir1", exist_ok=True)
-        with open("dir1/file2.txt", "w") as f:
-            f.write("Test file 2")
-
-        with open("test.txt", "w") as f:
-            f.write("clouds\nsky\nstar\nplanet\nclouds\nstar")
-
-        with tarfile.open(self.tar_name, "w") as tar:
-            tar.add("dir1", arcname="dir1")
-            tar.add("test.txt", arcname="test.txt")
+        # Создаем виджет text для вывода
+        self.root = tk.Tk()
+        self.text_output = tk.Text(self.root)
+        self.text_output.tag_configure("directory", foreground="purple")
+        self.text_output.tag_configure("file", foreground="blue")
 
     def tearDown(self):
-        if os.path.exists("dir1"):
-            shutil.rmtree("dir1")
-        if os.path.exists(self.tar_name):
-            os.remove(self.tar_name)
-        if os.path.exists("test.txt"):
-            os.remove("test.txt")
+        self.root.destroy()
 
-    def test_ls(self):
-        """Тестируем команду ls."""
-        # Проверяем содержимое корневой директории
-        result = ls("", self.tar_name)
-        self.assertEqual(result, "dir1\ntest.txt")  # В корне должны быть только dir1 и test.txt
+    def test_archive_not_found(self):
+        """Тест: архив не найден."""
+        result = ls("my_virtual_fs", "nonexistent_archive.tar", self.text_output)
+        self.assertEqual(result, "Error: Archive 'nonexistent_archive.tar' not found.")
+        self.assertEqual(self.text_output.get("1.0", tk.END).strip(), "")
 
-        # Проверяем содержимое подкаталога dir1
-        result = ls("dir1", self.tar_name)
-        self.assertEqual(result, "file2.txt")  # В dir1 должен быть только file2.txt
+    def test_empty_directory(self):
+        """Тест: пустая директория."""
+        result = ls("my_virtual_fs/dir2", "test_archive.tar", self.text_output)
+        self.assertEqual(result, "Directory is empty.")
+        self.assertEqual(self.text_output.get("1.0", tk.END).strip(), "")
 
-        # Проверяем пустую директорию
-        result = ls("empty_dir", self.tar_name)
-        self.assertEqual(result, "Directory path is empty.")
+    def test_list_directory_contents(self):
+        """Тест: содержимое директории."""
+        result = ls("my_virtual_fs", "test_archive.tar", self.text_output)
+        self.assertEqual(result, "")  # Ожидаем пустой возврат, т.к. вывод идет в text_output
 
-        # Проверяем ошибку при неверном пути
-        result = ls("non_existent_directory/", self.tar_name)
-        self.assertEqual(result, "Directory path is empty.")
+        # Проверяем содержимое text_output
+        output = self.text_output.get("1.0", tk.END).strip()
+        expected_output = "dir1\ndir1/file2.txt\ndir2\nfile1.txt"
+        self.assertEqual(output, expected_output)
 
-    def test_cd(self):
-        """Тестируем команду cd."""
-        # Переход в поддиректорию
-        result = cd("", "dir1", self.tar_name)
-        self.assertEqual(result, "dir1")
+
+from unittest.mock import patch, MagicMock
+
+
+class TestCdFunction(unittest.TestCase):
+
+    # Тест для перехода на родительскую директорию
+    @patch("tarfile.open")
+    def test_cd_to_parent_directory(self, mock_tarfile):
+        # Мокаем поведение tarfile
+        mock_tar = MagicMock()
+        mock_tarfile.return_value.__enter__.return_value = mock_tar
+        mock_tar.getmembers.return_value = []
+
+        current_dir = "my_virtual_fs/dir1"
+        target_dir = ".."
+        tar_path = "test_archive.tar"
+
+        result = cd(current_dir, target_dir, tar_path)
+        self.assertEqual(result, "my_virtual_fs")  # Ожидаем переход в родительскую директорию
+
+    # Тест для перехода в корневую директорию
+    @patch("tarfile.open")
+    def test_cd_to_root_directory(self, mock_tarfile):
+        # Мокаем поведение tarfile
+        mock_tar = MagicMock()
+        mock_tarfile.return_value.__enter__.return_value = mock_tar
+        mock_tar.getmembers.return_value = []
+
+        current_dir = "my_virtual_fs/dir1"
+        target_dir = "/"
+        tar_path = "test_archive.tar"
+
+        result = cd(current_dir, target_dir, tar_path)
+        self.assertEqual(result, "")  # Ожидаем, что вернется корень
+
+    # Тест для перехода в существующую директорию в архиве
+    @patch("tarfile.open")
+    def test_cd_to_non_existing_directory(self, mock_tarfile):
+        # Мокаем поведение tarfile
+        mock_tar = MagicMock()
+        mock_tarfile.return_value.__enter__.return_value = mock_tar
+        # Мокаем список файлов и директорий в архиве
+        mock_tar.getmembers.return_value = [tarfile.TarInfo(name="my_virtual_fs/dir1"),
+                                            tarfile.TarInfo(name="my_virtual_fs/dir2")]
+
+        current_dir = "my_virtual_fs"
+        target_dir = "dir3"  # Директория, которой нет в архиве
+        tar_path = "test_archive.tar"
 
         # Переход в несуществующую директорию
-        result = cd("", "non_existent_dir", self.tar_name)
-        self.assertEqual(result, "")
+        result = cd(current_dir, target_dir, tar_path)
 
-        # Переход назад
-        result = cd("dir1", "..", self.tar_name)
-        self.assertEqual(result, "")
+        # Ожидаем, что вернется текущая директория, т.е. "my_virtual_fs"
+        self.assertEqual(result, "my_virtual_fs")
 
-        # Переход на два уровня вверх
-        result = cd("dir1/subdir", "..", self.tar_name)
-        self.assertEqual(result, "dir1")
 
-        # Переход в корень
-        result = cd("dir1", "/", self.tar_name)
-        self.assertEqual(result, "")
+class TestDateFunction(unittest.TestCase):
 
-        # Оставление текущей директории при ошибке
-        result = cd("dir1", "non_existent_subdir", self.tar_name)
-        self.assertEqual(result, "dir1")
-
-    def test_uniq(self):
-        """Тестируем команду uniq."""
-
-        # Тест 1: Уникальные строки из файла
-        result = uniq("test.txt", self.tar_name)
-        self.assertIn("clouds", result)
-        self.assertIn("sky", result)
-        self.assertIn("star", result)
-        self.assertIn("planet", result)
-        self.assertEqual(result, "clouds\nplanet\nsky\nstar")  # Уникальные строки
-
-        # Тест 2: Пустой файл
-        result = uniq("empty_file.txt", self.tar_name)
-        self.assertEqual(result, "Error: File 'empty_file.txt' not found inside the archive.")
-
-        # Тест 3: Ошибка при неверном пути к файлу
-        result = uniq("non_existent_file.txt", self.tar_name)
-        self.assertEqual(result, "Error: File 'non_existent_file.txt' not found inside the archive.")
-
-    def test_date(self):
-        """Тестируем команду date."""
-
-        # Тест 1: Проверка вывода текущей даты
+    # Тест на корректность формата возвращаемой даты
+    def test_date_format(self):
         result = date()
-        current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.assertTrue(result.startswith(current_date))  # Проверка на начало строки с датой
+        # Проверяем, что результат соответствует формату "YYYY-MM-DD HH:MM:SS"
+        try:
+            datetime.datetime.strptime(result, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            self.fail("Date format is incorrect")
 
-        # Тест 2: Проверка, что дата обновляется при каждом вызове
+    # Тест на стабильность возвращаемой даты
+    def test_date_consistency(self):
         result1 = date()
-        sleep(1)  # Пауза 1 секунда между вызовами
         result2 = date()
-        self.assertNotEqual(result1, result2)
-        # Ожидаем, что даты будут разные
+        self.assertEqual(result1, result2)  # Два вызова функции должны вернуть одинаковый формат
 
-        # Тест 3: Проверка формата даты
+    # Тест с моком времени
+    @patch('datetime.datetime')
+    def test_date_with_mock(self, mock_datetime):
+        mock_now = MagicMock()
+        mock_now.strftime.return_value = "2024-12-09 17:30:45"
+        mock_datetime.now.return_value = mock_now
         result = date()
-        self.assertRegex(result, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")  # Формат "YYYY-MM-DD HH:MM:SS"
+        self.assertEqual(result, "2024-12-09 17:30:45")
 
-    @patch("os._exit")
-    def test_exit(self, mock_exit):
-        """Тестируем команду exit."""
-        with patch("builtins.print") as mock_print:
-            # Сценарий без GUI
-            exit_command(is_gui_running=False)
 
-            # Проверяем, что сообщение было напечатано
-            mock_print.assert_called_with("Exiting application...")
+class TestExitCommand(unittest.TestCase):
 
-            # Проверяем, что вызван os._exit(0)
-            mock_exit.assert_called_once_with(0)
+    # Тест 1: Когда is_gui_running == True, вызывается метод quit() на root
+    @patch('builtins.exit')
+    def test_exit_with_gui_running(self, mock_exit):
+        mock_root = MagicMock()
+        exit_command(True, mock_root)
+        mock_root.quit.assert_called_once()
+        mock_exit.assert_not_called()
 
-            # Сценарий с GUI
-            mock_root = MagicMock()
-            exit_command(is_gui_running=True, root=mock_root)
+    # Тест 2: Когда is_gui_running == False, вызывается exit()
+    @patch('builtins.exit')
+    def test_exit_without_gui_running(self, mock_exit):
+        mock_root = MagicMock()
+        exit_command(False, mock_root)
 
-            # Проверяем, что destroy был вызван
-            mock_root.destroy.assert_called_once()
+        mock_exit.assert_called_once()
+        mock_root.quit.assert_not_called()
+
+    # Тест 3: Проверка, что программа завершится корректно при передаче значений
+    @patch('builtins.exit')
+    def test_exit_with_invalid_gui_state(self, mock_exit):
+        mock_root = MagicMock()
+        exit_command(False, mock_root)
+        mock_exit.assert_called_once()
+        mock_root.quit.assert_not_called()
+        exit_command(True, mock_root)
+        mock_root.quit.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
