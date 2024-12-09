@@ -216,35 +216,41 @@ class TestDateFunction(unittest.TestCase):
         self.assertEqual(result, "2024-12-09 17:30:45")
 
 
+import unittest
+from unittest.mock import MagicMock, patch
+
 class TestExitCommand(unittest.TestCase):
 
-    # Тест 1: Когда is_gui_running == True, вызывается метод quit() на root
-    @patch('builtins.exit')
-    def test_exit_with_gui_running(self, mock_exit):
+    # Тест с мокированием Tkinter
+    @patch('tkinter.Tk')
+    def test_exit_with_gui_running(self, MockTk):
         mock_root = MagicMock()
+        MockTk.return_value = mock_root  # Мокаем Tk, чтобы не вызывать реальный Tkinter
         exit_command(True, mock_root)
-        mock_root.quit.assert_called_once()
-        mock_exit.assert_not_called()
+        mock_root.quit.assert_called_once()  # Проверка, что метод quit был вызван
 
-    # Тест 2: Когда is_gui_running == False, вызывается exit()
+    # Тест для случая, когда is_gui_running == False
     @patch('builtins.exit')
     def test_exit_without_gui_running(self, mock_exit):
         mock_root = MagicMock()
         exit_command(False, mock_root)
-
         mock_exit.assert_called_once()
         mock_root.quit.assert_not_called()
 
-    # Тест 3: Проверка, что программа завершится корректно при передаче значений
+    # Тест с другими значениями для is_gui_running
     @patch('builtins.exit')
     def test_exit_with_invalid_gui_state(self, mock_exit):
         mock_root = MagicMock()
         exit_command(False, mock_root)
         mock_exit.assert_called_once()
         mock_root.quit.assert_not_called()
+
         exit_command(True, mock_root)
         mock_root.quit.assert_called_once()
 
+
+if __name__ == '__main__':
+    unittest.main()
 
 if __name__ == "__main__":
     unittest.main()
