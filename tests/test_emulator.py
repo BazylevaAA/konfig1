@@ -194,7 +194,6 @@ class TestDateFunction(unittest.TestCase):
     # Тест на корректность формата возвращаемой даты
     def test_date_format(self):
         result = date()
-        # Проверяем, что результат соответствует формату "YYYY-MM-DD HH:MM:SS"
         try:
             datetime.datetime.strptime(result, "%Y-%m-%d %H:%M:%S")
         except ValueError:
@@ -204,7 +203,7 @@ class TestDateFunction(unittest.TestCase):
     def test_date_consistency(self):
         result1 = date()
         result2 = date()
-        self.assertEqual(result1, result2)  # Два вызова функции должны вернуть одинаковый формат
+        self.assertEqual(result1, result2)
 
     # Тест с моком времени
     @patch('datetime.datetime')

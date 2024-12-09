@@ -89,7 +89,6 @@ def cd(current_dir, target_dir, tar_path):
         return current_dir
 def uniq(file_path, tar_path, current_dir=""):
     try:
-        # Нормализация относительных путей
         if current_dir:
             if not file_path.startswith(("./", "/")):
                 file_path = os.path.join(current_dir, file_path)
@@ -106,7 +105,7 @@ def uniq(file_path, tar_path, current_dir=""):
 
                     file_content = file.read()
                     if not file_content:
-                        return ""  # Пустой файл
+                        return ""
 
                     detected = chardet.detect(file_content)
                     encoding = detected.get('encoding', 'utf-8')
