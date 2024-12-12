@@ -7,6 +7,10 @@ from tkinter import scrolledtext
 from commands import ls, cd, uniq, date, exit_command
 
 
+# TODO:
+# Убрать ./ в начале всех путей
+# uniq работает с относительными путями (учитывает текущую папку)
+# Доп после 1 дек: Раскрасить файлы и папки разными цветами (файлы - синие, папки - тёмно-фиолетовые)
 def pack_virtual_fs(folder_name="my_virtual_fs", archive_name="filesystem.tar"):
     """ Упаковывает папку в tar-архив. """
     if os.path.exists(folder_name):

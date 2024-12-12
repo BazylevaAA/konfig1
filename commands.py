@@ -22,18 +22,16 @@ def ls(current_dir, tar_path, text_output):
             # Убираем './' если оно присутствует в начале пути
             member_name = member.name.lstrip("./")
 
-            # Фильтруем только файлы и директории в пределах текущей директории
+            # Фильтруем только элементы в пределах текущей директории, не глубже
             if member_name.startswith(current_dir):
                 stripped_name = member_name[len(current_dir):]
 
-                # Убираем / на конце для файлов и директорий
-                stripped_name = stripped_name.rstrip("/")
-
-                # Добавляем в список с цветами
-                if member.isdir():
-                    contents.append((stripped_name, 'directory'))  # Фиолетовый для директорий
-                else:
-                    contents.append((stripped_name, 'file'))  # Синий для файлов
+                # Проверяем, что элемент находится на текущем уровне (не содержит '/')
+                if "/" not in stripped_name:
+                    if member.isdir():
+                        contents.append((stripped_name, 'directory'))  # Фиолетовый для директорий
+                    else:
+                        contents.append((stripped_name, 'file'))  # Синий для файлов
 
         # Если содержимое пусто, возвращаем сообщение
         if not contents:
